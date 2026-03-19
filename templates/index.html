@@ -853,8 +853,32 @@ function speak(text) {
             setTimeout(() => setEmotion("neutral"), 2000);
         };
         audio.onerror = () => stopMouthAnimation();
-        audio.play();
+
+        // แก้ปัญหา autoplay บนมือถือ
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(() => {
+                // ถ้า autoplay ถูกบล็อก ให้แสดงปุ่มแตะเพื่อฟัง
+                const subtitle = document.getElementById("subtitle");
+                subtitle.innerHTML = text + ' <span style="color:#00ffd5;font-size:14px;cursor:pointer;" onclick="retryAudio(this, \'' + encodeURIComponent(text) + '\')">🔊 แตะเพื่อฟัง</span>';
+                stopMouthAnimation();
+            });
+        }
     });
+}
+
+// 🔊 retry เสียงตอนผู้ใช้แตะ
+function retryAudio(btn, encodedText) {
+    btn.style.display = "none";
+    const text = decodeURIComponent(encodedText);
+    const audio = new Audio(`/tts?text=${encodeURIComponent(text)}`);
+    audio.onplay = () => startMouthAnimation();
+    audio.onended = () => {
+        stopMouthAnimation();
+        setTimeout(() => setEmotion("neutral"), 2000);
+    };
+    audio.onerror = () => stopMouthAnimation();
+    audio.play();
 }
 </script>
 
