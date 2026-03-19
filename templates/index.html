@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Avatar</title>
+
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            /* 🌈 พื้นหลังรูป */
+            background: url('https://png.pngtree.com/background/20250205/original/pngtree-beautiful-office-meeting-room-in-cartoon-style-ai-generate-picture-image_16098326.jpg') no-repeat center center;
+            background-size: cover;
+            font-family: Arial;
+        }
+
+        .card {
+            width: 900px;
+            height: 500px;
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+
+            background: rgba(0,0,0,0.35);
+            backdrop-filter: blur(6px);
+
+            box-shadow: 0 0 60px rgba(0,0,0,0.7);
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .title {
+            position: absolute;
+            top: 15px;
+            width: 100%;
+            text-align: center;
+            color: #00ffd5;
+            font-size: 22px;
+            z-index: 2;
+        }
+
+        .subtitle {
+            position: absolute;
+            bottom: 110px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-size: 20px;
+            z-index: 2;
+            padding: 0 20px;
+            box-sizing: border-box;
+            min-height: 30px;
+        }
+
+        .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background: #00ffd5;
+            margin-left: 2px;
+            vertical-align: middle;
+            animation: blink-cursor 0.7s step-end infinite;
+        }
+
+        @keyframes blink-cursor {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .loading-dots span {
+            display: inline-block;
+            animation: dot-bounce 1.2s infinite;
+            font-size: 24px;
+            color: #00ffd5;
+        }
+        .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes dot-bounce {
+            0%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-8px); }
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 15px;
+            width: 100%;
+            text-align: center;
+            z-index: 3;
+        }
+
+        button {
+            background: linear-gradient(45deg, #ff0040, #ff8000);
+            border: none;
+            padding: 14px 28px;
+            border-radius: 50px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        /* 🎨 background selector */
+        .bg-selector {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 100;
+            display: flex;
+            gap: 8px;
+        }
+
+        .bg-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border: 3px solid white;
+            cursor: pointer;
+            background-size: cover;
+            background-position: center;
+            transition: transform 0.2s;
+            padding: 0;
+        }
+
+        .bg-btn:hover { transform: scale(1.15); }
+        .bg-btn.active { border-color: #00ffd5; box-shadow: 0 0 10px #00ffd5; }
+
+        /* 🕐 Clock */
+        .clock {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 100;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 8px 16px;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        .clock .time {
+            font-size: 26px;
+            font-weight: bold;
+            color: #00ffd5;
+            letter-spacing: 2px;
+        }
+
+        .clock .date {
+            font-size: 12px;
+            color: rgba(255,255,255,0.8);
+            margin-top: 2px;
+        }
+
+        /* ⌨️ text input */
+        .text-input-area {
+            position: absolute;
+            bottom: 60px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            z-index: 3;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+
+        .text-input-area input {
+            flex: 1;
+            max-width: 500px;
+            padding: 10px 18px;
+            border-radius: 50px;
+            border: none;
+            font-size: 16px;
+            outline: none;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+        }
+
+        .text-input-area button {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 15px;
+            width: 100%;
+            text-align: center;
+            z-index: 3;
+        }
+
+        /* 🟢 Status bar */
+        .status-bar {
+            position: absolute;
+            top: 12px;
+            left: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: #00ff88;
+            border-radius: 50%;
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.3); }
+        }
+
+        .status-name {
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .status-label {
+            color: #00ff88;
+            font-size: 11px;
+        }
+
+        /* 📋 Chat History Panel */
+        .chat-panel {
+            position: fixed;
+            right: 15px;
+            top: 80px;
+            width: 260px;
+            max-height: 70vh;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 16px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-panel-header {
+            padding: 10px 14px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #00ffd5;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            flex-shrink: 0;
+        }
+
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chat-history::-webkit-scrollbar { width: 4px; }
+        .chat-history::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+
+        .chat-msg {
+            font-size: 13px;
+            line-height: 1.4;
+            padding: 7px 10px;
+            border-radius: 10px;
+            max-width: 100%;
+            word-break: break-word;
+        }
+
+        .chat-msg.user {
+            background: rgba(255,120,0,0.3);
+            color: #ffd5a0;
+            align-self: flex-end;
+            text-align: right;
+        }
+
+        .chat-msg.ai {
+            background: rgba(0,255,213,0.15);
+            color: #d0fff8;
+            align-self: flex-start;
+        }
+
+        .chat-msg .sender {
+            font-size: 10px;
+            opacity: 0.7;
+            margin-bottom: 2px;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- 🕐 Clock -->
+<div class="clock">
+    <div class="time" id="clock-time">00:00:00</div>
+    <div class="date" id="clock-date"></div>
+</div>
+
+<!-- 🎨 Background Selector -->
+<div class="bg-selector" id="bgSelector"></div>
+
+<!-- 📋 Chat History Panel -->
+<div class="chat-panel">
+    <div class="chat-panel-header">💬 ประวัติการสนทนา</div>
+    <div class="chat-history" id="chatHistory"></div>
+</div>
+
+<div class="card">
+    <!-- 🟢 Status bar -->
+    <div class="status-bar">
+        <div class="status-dot"></div>
+        <div>
+            <div class="status-name">น้องอาย่า</div>
+            <div class="status-label">● กำลังออนไลน์</div>
+        </div>
+    </div>
+
+    <div class="subtitle" id="subtitle">พร้อมพูด...</div>
+
+    <!-- ⌨️ Text Input -->
+    <div class="text-input-area">
+        <input type="text" id="textInput" placeholder="พิมพ์ข้อความที่นี่..." onkeydown="if(event.key==='Enter') sendText()" />
+        <button onclick="sendText()">📨 ส่ง</button>
+    </div>
+
+    <div class="controls">
+        <button onclick="startListening()">🎤 พูด</button>
+        <button onclick="resetChat()" style="background: linear-gradient(45deg, #444, #666); font-size:15px; padding:10px 20px;">🔄 เริ่มใหม่</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+<script>
+let container = document.querySelector(".card");
+
+let scene = new THREE.Scene();
+
+let camera = new THREE.PerspectiveCamera(35, 900/500, 0.1, 1000);
+camera.position.set(0, 1.3, 2.5);
+
+let renderer = new THREE.WebGLRenderer({
+    alpha: true,
+    antialias: true
+});
+renderer.setSize(900, 500);
+container.appendChild(renderer.domElement);
+
+// 💡 แสง
+const light = new THREE.DirectionalLight(0xffffff, 1.2);
+light.position.set(0, 2, 2);
+scene.add(light);
+
+const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+scene.add(ambient);
+
+// 📦 โหลด avatar
+let loader = new THREE.GLTFLoader();
+let avatar;
+let morphMeshes = [];
+let eyeLeft = null;
+let eyeRight = null;
+let isSpeaking = false;
+let mouthTimer = null;
+
+loader.load('/static/avatar.glb', function(gltf) {
+    avatar = gltf.scene;
+    avatar.scale.set(1.7, 1.7, 1.7);
+    avatar.position.set(0, -1.2, 0);
+    scene.add(avatar);
+
+    avatar.traverse(function(obj) {
+        if (obj.isMesh && obj.morphTargetInfluences && obj.morphTargetDictionary) {
+            morphMeshes.push(obj);
+        }
+        if (obj.name === "LeftEye") eyeLeft = obj;
+        if (obj.name === "RightEye") eyeRight = obj;
+    });
+
+    startBlinking();
+});
+
+// 👁️ กะพริบตา โดยใช้ scale Y ของ eye mesh
+function startBlinking() {
+    function blink() {
+        // หา EyeLeft และ EyeRight mesh
+        let eyeMeshes = [];
+        if (avatar) {
+            avatar.traverse(obj => {
+                if (obj.isMesh && (obj.name === "EyeLeft" || obj.name === "EyeRight")) {
+                    eyeMeshes.push(obj);
+                }
+            });
+        }
+
+        if (eyeMeshes.length > 0) {
+            // ปิดตา
+            eyeMeshes.forEach(m => m.scale.y = 0.05);
+
+            setTimeout(() => {
+                // เปิดตา
+                eyeMeshes.forEach(m => m.scale.y = 1.0);
+            }, 120);
+        }
+
+        // กะพริบสุ่มทุก 2.5-5 วินาที เหมือนมนุษย์จริงๆ
+        const nextBlink = 2500 + Math.random() * 2500;
+        setTimeout(blink, nextBlink);
+    }
+
+    // เริ่มกะพริบครั้งแรกหลัง 1 วินาที
+    setTimeout(blink, 1000);
+}
+
+// 👄 ขยับปาก
+function setMouth(value) {
+    morphMeshes.forEach(mesh => {
+        const idx = mesh.morphTargetDictionary["mouthOpen"];
+        if (idx !== undefined) {
+            mesh.morphTargetInfluences[idx] = value;
+        }
+    });
+}
+
+function startMouthAnimation() {
+    isSpeaking = true;
+    let open = false;
+    mouthTimer = setInterval(() => {
+        if (!isSpeaking) {
+            setMouth(0);
+            clearInterval(mouthTimer);
+            return;
+        }
+        open = !open;
+        setMouth(open ? 0.8 : 0.1);
+    }, 150);
+}
+
+function stopMouthAnimation() {
+    isSpeaking = false;
+    if (mouthTimer) clearInterval(mouthTimer);
+    setMouth(0);
+}
+
+// 🎬 animate
+function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+}
+animate();
+
+// 🖱️ หมุนตามเมาส์
+window.addEventListener("mousemove", (e) => {
+    if (!avatar) return;
+
+    let x = (e.clientX / window.innerWidth) - 0.5;
+    let y = (e.clientY / window.innerHeight) - 0.5;
+
+    avatar.rotation.y = x * 1.5;
+    avatar.rotation.x = -y * 0.3;
+});
+
+// 🕐 Real-time Clock
+const thaiDays = ["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
+const thaiMonths = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+
+function updateClock() {
+    const now = new Date();
+
+    const h = String(now.getHours()).padStart(2, "0");
+    const m = String(now.getMinutes()).padStart(2, "0");
+    const s = String(now.getSeconds()).padStart(2, "0");
+    document.getElementById("clock-time").innerText = `${h}:${m}:${s}`;
+
+    const day = thaiDays[now.getDay()];
+    const date = now.getDate();
+    const month = thaiMonths[now.getMonth()];
+    const year = now.getFullYear() + 543; // พ.ศ.
+    document.getElementById("clock-date").innerText = `${day} ${date} ${month} ${year}`;
+}
+
+updateClock();
+setInterval(updateClock, 1000);
+
+// 🎨 ระบบเปลี่ยนพื้นหลัง
+const backgrounds = [
+    {
+        name: "ออฟฟิศ",
+        url: "https://png.pngtree.com/background/20250205/original/pngtree-beautiful-office-meeting-room-in-cartoon-style-ai-generate-picture-image_16098326.jpg",
+        thumb: "#1a6b9a"
+    },
+    {
+        name: "ธรรมชาติ",
+        url: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1200",
+        thumb: "#2d8a4e"
+    },
+    {
+        name: "เมือง",
+        url: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=1200",
+        thumb: "#4a4a8a"
+    },
+    {
+        name: "อวกาศ",
+        url: "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1200",
+        thumb: "#0a0a2a"
+    },
+    {
+        name: "ชายหาด",
+        url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200",
+        thumb: "#f4a460"
+    }
+];
+
+let currentBg = 0;
+
+function initBackgrounds() {
+    const selector = document.getElementById("bgSelector");
+    backgrounds.forEach((bg, i) => {
+        const btn = document.createElement("button");
+        btn.className = "bg-btn" + (i === 0 ? " active" : "");
+        btn.style.background = bg.thumb;
+        btn.title = bg.name;
+        btn.onclick = () => changeBg(i);
+        selector.appendChild(btn);
+    });
+}
+
+function changeBg(index) {
+    currentBg = index;
+    document.body.style.backgroundImage = `url('${backgrounds[index].url}')`;
+
+    // อัพเดต active button
+    document.querySelectorAll(".bg-btn").forEach((btn, i) => {
+        btn.classList.toggle("active", i === index);
+    });
+}
+
+initBackgrounds();
+
+// 📋 เพิ่มข้อความในแถบประวัติ
+function addChatMessage(sender, text) {
+    const history = document.getElementById("chatHistory");
+    const div = document.createElement("div");
+    div.className = `chat-msg ${sender === "user" ? "user" : "ai"}`;
+    div.innerHTML = `<div class="sender">${sender === "user" ? "คุณ" : "น้องอาย่า"}</div>${text}`;
+    history.appendChild(div);
+    history.scrollTop = history.scrollHeight;
+}
+
+// ⌨️ ส่งข้อความจาก input
+function sendText() {
+    const input = document.getElementById("textInput");
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.value = "";
+    addChatMessage("user", text);
+    sendToAI(text);
+}
+// 🔄 เริ่มการสนทนาใหม่
+function resetChat() {
+    fetch("/reset", { method: "POST" })
+        .then(() => location.reload())
+        .catch(() => location.reload());
+}
+
+function startListening() {
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = "th-TH";
+
+    // เริ่มพยักหน้าตอนกดปุ่มพูด
+    recognition.onstart = function() {
+        document.getElementById("subtitle").innerText = "กำลังฟัง...";
+        startNodding();
+    };
+
+    recognition.onresult = function(event) {
+        const text = event.results[0][0].transcript;
+        console.log("คุณพูด:", text);
+        stopNodding();
+        addChatMessage("user", text);
+        sendToAI(text);
+    };
+
+    recognition.onerror = function() {
+        stopNodding();
+        document.getElementById("subtitle").innerText = "พร้อมพูด...";
+    };
+
+    recognition.onend = function() {
+        stopNodding();
+    };
+
+    recognition.start();
+}
+
+// 🙂 พยักหน้า
+let nodTimer = null;
+let isNodding = false;
+
+function startNodding() {
+    if (!avatar) return;
+    isNodding = true;
+
+    let head = null;
+    avatar.traverse(obj => {
+        if (obj.name === "Head") head = obj;
+    });
+
+    if (!head) return;
+
+    let nodDown = false;
+    nodTimer = setInterval(() => {
+        if (!isNodding) {
+            head.rotation.x = 0;
+            clearInterval(nodTimer);
+            return;
+        }
+        nodDown = !nodDown;
+        // พยักหน้าขึ้นลงเบาๆ
+        head.rotation.x = nodDown ? 0.12 : -0.05;
+    }, 1000);
+}
+
+function stopNodding() {
+    isNodding = false;
+    if (nodTimer) clearInterval(nodTimer);
+
+    // reset หัวกลับตำแหน่งปกติ
+    if (avatar) {
+        avatar.traverse(obj => {
+            if (obj.name === "Head") obj.rotation.x = 0;
+        });
+    }
+}
+
+// 🤖 ส่งไป AI
+function sendToAI(text) {
+    document.getElementById("subtitle").innerHTML =
+        '<div class="loading-dots"><span>●</span><span>●</span><span>●</span></div>';
+
+    fetch("/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ text: text })
+    })
+    .then(res => res.json())
+    .then(data => {
+        setEmotion(data.emotion || "neutral");
+        speak(data.reply);
+    })
+    .catch(() => speak("เกิดข้อผิดพลาด"));
+}
+
+// 😊 ตั้งอารมณ์
+function setEmotion(emotion) {
+    if (!avatar) return;
+
+    // หา head bone
+    let head = null;
+    avatar.traverse(obj => {
+        if (obj.name === "Head") head = obj;
+    });
+
+    // reset ก่อน
+    if (head) {
+        head.rotation.x = 0;
+        head.rotation.z = 0;
+    }
+    setSmile(0);
+
+    switch(emotion) {
+        case "happy":
+        case "surprised":
+            // ยิ้ม + ก้มหน้าเล็กน้อย
+            setSmile(1.0);
+            if (head) head.rotation.x = -0.1;
+            break;
+
+        case "sad":
+            // ก้มหน้า + ไม่ยิ้ม
+            setSmile(0);
+            if (head) head.rotation.x = 0.2;
+            break;
+
+        case "angry":
+            // เงยหน้า + ไม่ยิ้ม
+            setSmile(0);
+            if (head) head.rotation.x = -0.15;
+            break;
+
+        case "confused":
+            // เอียงหัว + ยิ้มนิดหน่อย
+            setSmile(0.3);
+            if (head) head.rotation.z = 0.12;
+            break;
+
+        case "neutral":
+        default:
+            setSmile(0);
+            break;
+    }
+
+    console.log("😊 Emotion:", emotion);
+}
+
+// 😊 ตั้งค่า mouthSmile
+function setSmile(value) {
+    morphMeshes.forEach(mesh => {
+        const idx = mesh.morphTargetDictionary["mouthSmile"];
+        if (idx !== undefined) {
+            mesh.morphTargetInfluences[idx] = value;
+        }
+    });
+}
+
+// ✨ Typing animation
+let typingTimer = null;
+
+function typeText(text, onDone) {
+    const subtitle = document.getElementById("subtitle");
+    subtitle.innerHTML = '';
+    let i = 0;
+
+    if (typingTimer) clearInterval(typingTimer);
+
+    typingTimer = setInterval(() => {
+        if (i < text.length) {
+            subtitle.innerHTML = text.substring(0, i + 1) +
+                '<span class="typing-cursor"></span>';
+            i++;
+        } else {
+            clearInterval(typingTimer);
+            subtitle.innerHTML = text;
+            if (onDone) onDone();
+        }
+    }, 40);
+}
+
+// 🔊 พูด
+function speak(text) {
+    // เพิ่มในแชทประวัติ
+    addChatMessage("ai", text);
+
+    // typing ก่อน ปากยังไม่ขยับ
+    typeText(text, () => {
+        const audio = new Audio(`/tts?text=${encodeURIComponent(text)}`);
+        audio.onplay = () => startMouthAnimation();
+        audio.onended = () => {
+            stopMouthAnimation();
+            setTimeout(() => setEmotion("neutral"), 2000);
+        };
+        audio.onerror = () => stopMouthAnimation();
+        audio.play();
+    });
+}
+</script>
+
+</body>
+</html>
