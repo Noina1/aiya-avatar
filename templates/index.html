@@ -326,6 +326,47 @@
             }
         }
 
+        /* 😊 Emotion Badge */
+        .emotion-badge {
+            position: absolute;
+            bottom: 140px;
+            left: 15px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 5px 12px;
+            color: white;
+            font-size: 13px;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+
+        /* 🔇 Mute button */
+        .mute-btn {
+            position: absolute;
+            bottom: 140px;
+            right: 15px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            width: 38px;
+            height: 38px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: all 0.3s ease;
+        }
+
+        .mute-btn:hover { background: rgba(255,255,255,0.2); }
+        .mute-btn.muted { border-color: #ff4444; color: #ff4444; }
+
         .chat-panel-header {
             padding: 10px 14px;
             font-size: 13px;
@@ -403,6 +444,12 @@
             <div class="status-label">● กำลังออนไลน์</div>
         </div>
     </div>
+
+    <!-- 😊 Emotion Badge -->
+    <div class="emotion-badge" id="emotionBadge">😐 Neutral</div>
+
+    <!-- 🔇 Mute Button -->
+    <button class="mute-btn" id="muteBtn" onclick="toggleMute()" title="ปิด/เปิดเสียง">🔊</button>
 
     <div class="subtitle" id="subtitle">พร้อมพูด...</div>
 
@@ -761,8 +808,22 @@ function sendToAI(text) {
 }
 
 // 😊 ตั้งอารมณ์
+// 😊 emotion badge map
+const emotionBadgeMap = {
+    happy: "😊 Happy",
+    surprised: "😮 Surprised",
+    sad: "😢 Sad",
+    angry: "😠 Angry",
+    confused: "😕 Confused",
+    neutral: "😐 Neutral"
+};
+
 function setEmotion(emotion) {
     if (!avatar) return;
+
+    // อัพเดต emotion badge
+    const badge = document.getElementById("emotionBadge");
+    if (badge) badge.innerText = emotionBadgeMap[emotion] || "😐 Neutral";
 
     // หา head bone
     let head = null;
@@ -845,13 +906,25 @@ function typeText(text, onDone) {
     }, 40);
 }
 
+// 🔇 ปิด/เปิดเสียง
+let isMuted = false;
+function toggleMute() {
+    isMuted = !isMuted;
+    const btn = document.getElementById("muteBtn");
+    btn.innerText = isMuted ? "🔇" : "🔊";
+    btn.classList.toggle("muted", isMuted);
+}
+
 // 🔊 พูด
 function speak(text) {
-    // เพิ่มในแชทประวัติ
     addChatMessage("ai", text);
 
-    // typing ก่อน ปากยังไม่ขยับ
     typeText(text, () => {
+        if (isMuted) {
+            stopMouthAnimation();
+            return;
+        }
+
         const audio = new Audio(`/tts?text=${encodeURIComponent(text)}`);
         audio.onplay = () => startMouthAnimation();
         audio.onended = () => {
@@ -860,11 +933,9 @@ function speak(text) {
         };
         audio.onerror = () => stopMouthAnimation();
 
-        // แก้ปัญหา autoplay บนมือถือ
         const playPromise = audio.play();
         if (playPromise !== undefined) {
             playPromise.catch(() => {
-                // ถ้า autoplay ถูกบล็อก ให้แสดงปุ่มแตะเพื่อฟัง
                 const subtitle = document.getElementById("subtitle");
                 subtitle.innerHTML = text + ' <span style="color:#00ffd5;font-size:14px;cursor:pointer;" onclick="retryAudio(this, \'' + encodeURIComponent(text) + '\')">🔊 แตะเพื่อฟัง</span>';
                 stopMouthAnimation();
