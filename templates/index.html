@@ -367,6 +367,42 @@
         .mute-btn:hover { background: rgba(255,255,255,0.2); }
         .mute-btn.muted { border-color: #ff4444; color: #ff4444; }
 
+        /* 🎙️ Voice Visualizer */
+        .visualizer {
+            position: absolute;
+            bottom: 105px;
+            width: 100%;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 3px;
+            height: 30px;
+            z-index: 5;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .visualizer.active { opacity: 1; }
+        .viz-bar {
+            width: 4px;
+            background: linear-gradient(to top, #00ffd5, #0080ff);
+            border-radius: 2px;
+            min-height: 3px;
+            transition: height 0.1s ease;
+        }
+
+        /* ⏳ Progress Bar */
+        .progress-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 3px;
+            background: linear-gradient(90deg, #00ffd5, #0080ff);
+            z-index: 10;
+            transition: width 0.3s ease;
+            border-radius: 0 2px 2px 0;
+        }
+
         .chat-panel-header {
             padding: 10px 14px;
             font-size: 13px;
@@ -436,6 +472,9 @@
 </div>
 
 <div class="card">
+    <!-- ⏳ Progress Bar -->
+    <div class="progress-bar" id="progressBar"></div>
+
     <!-- 🟢 Status bar -->
     <div class="status-bar">
         <div class="status-dot"></div>
@@ -452,6 +491,9 @@
     <button class="mute-btn" id="muteBtn" onclick="toggleMute()" title="ปิด/เปิดเสียง">🔊</button>
 
     <div class="subtitle" id="subtitle">พร้อมพูด...</div>
+
+    <!-- 🎙️ Voice Visualizer -->
+    <div class="visualizer" id="visualizer"></div>
 
     <!-- ⌨️ Text Input -->
     <div class="text-input-area">
@@ -614,6 +656,31 @@ window.addEventListener("mousemove", (e) => {
     avatar.rotation.y = x * 1.5;
     avatar.rotation.x = -y * 0.3;
 });
+
+// 🎙️ Voice Visualizer
+const vizContainer = document.getElementById("visualizer");
+for (let i = 0; i < 20; i++) {
+    const bar = document.createElement("div");
+    bar.className = "viz-bar";
+    bar.style.height = "3px";
+    vizContainer.appendChild(bar);
+}
+
+let vizTimer = null;
+function startVisualizer() {
+    vizContainer.classList.add("active");
+    vizTimer = setInterval(() => {
+        document.querySelectorAll(".viz-bar").forEach(bar => {
+            bar.style.height = (Math.random() * 25 + 3) + "px";
+        });
+    }, 100);
+}
+
+function stopVisualizer() {
+    vizContainer.classList.remove("active");
+    if (vizTimer) clearInterval(vizTimer);
+    document.querySelectorAll(".viz-bar").forEach(b => b.style.height = "3px");
+}
 
 // 🕐 Real-time Clock
 const thaiDays = ["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
@@ -794,6 +861,11 @@ function sendToAI(text) {
     document.getElementById("subtitle").innerHTML =
         '<div class="loading-dots"><span>●</span><span>●</span><span>●</span></div>';
 
+    // เริ่ม progress bar
+    const bar = document.getElementById("progressBar");
+    bar.style.transition = "width 3s ease";
+    bar.style.width = "85%";
+
     fetch("/chat", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -801,10 +873,16 @@ function sendToAI(text) {
     })
     .then(res => res.json())
     .then(data => {
+        bar.style.transition = "width 0.3s ease";
+        bar.style.width = "100%";
+        setTimeout(() => { bar.style.transition = "none"; bar.style.width = "0%"; }, 400);
         setEmotion(data.emotion || "neutral");
         speak(data.reply);
     })
-    .catch(() => speak("เกิดข้อผิดพลาด"));
+    .catch(() => {
+        bar.style.width = "0%";
+        speak("เกิดข้อผิดพลาด");
+    });
 }
 
 // 😊 ตั้งอารมณ์
@@ -926,12 +1004,19 @@ function speak(text) {
         }
 
         const audio = new Audio(`/tts?text=${encodeURIComponent(text)}`);
-        audio.onplay = () => startMouthAnimation();
+        audio.onplay = () => {
+            startMouthAnimation();
+            startVisualizer();
+        };
         audio.onended = () => {
             stopMouthAnimation();
+            stopVisualizer();
             setTimeout(() => setEmotion("neutral"), 2000);
         };
-        audio.onerror = () => stopMouthAnimation();
+        audio.onerror = () => {
+            stopMouthAnimation();
+            stopVisualizer();
+        };
 
         const playPromise = audio.play();
         if (playPromise !== undefined) {
@@ -939,6 +1024,7 @@ function speak(text) {
                 const subtitle = document.getElementById("subtitle");
                 subtitle.innerHTML = text + ' <span style="color:#00ffd5;font-size:14px;cursor:pointer;" onclick="retryAudio(this, \'' + encodeURIComponent(text) + '\')">🔊 แตะเพื่อฟัง</span>';
                 stopMouthAnimation();
+                stopVisualizer();
             });
         }
     });
